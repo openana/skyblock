@@ -4,6 +4,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
 import net.minecraft.client.world.GeneratorType;
+import net.minecraft.util.math.noise.DoublePerlinNoiseSampler;
 import net.minecraft.util.registry.DynamicRegistryManager;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.util.registry.SimpleRegistry;
@@ -20,11 +21,15 @@ public class SkyBlockGeneratorTypes {
       new GeneratorType("skyblock") {
         @Override
         protected ChunkGenerator getChunkGenerator(
-            Registry<Biome> biomeRegistry,
-            Registry<ChunkGeneratorSettings> chunkGeneratorSettingsRegistry,
+            DynamicRegistryManager registryManager,
             long seed) {
+          Registry<DoublePerlinNoiseSampler.NoiseParameters> noiseRegistry = 
+              registryManager.get(Registry.NOISE_WORLDGEN);
+          Registry<Biome> biomeRegistry = registryManager.get(Registry.BIOME_KEY);
+          Registry<ChunkGeneratorSettings> settingsRegistry =
+              registryManager.get(Registry.CHUNK_GENERATOR_SETTINGS_KEY);
           return SkyBlockGenerationSettings.createOverworldGenerator(
-              biomeRegistry, chunkGeneratorSettingsRegistry, seed);
+              noiseRegistry, biomeRegistry, settingsRegistry, seed);
         }
 
         @Override
@@ -33,6 +38,8 @@ public class SkyBlockGeneratorTypes {
             long seed,
             boolean generateStructures,
             boolean bonusChest) {
+          Registry<DoublePerlinNoiseSampler.NoiseParameters> noiseRegistry = 
+              registryManager.get(Registry.NOISE_WORLDGEN);
           Registry<Biome> biomeRegistry = registryManager.get(Registry.BIOME_KEY);
           Registry<DimensionType> dimensionTypeRegistry =
               registryManager.get(Registry.DIMENSION_TYPE_KEY);
@@ -40,7 +47,7 @@ public class SkyBlockGeneratorTypes {
               registryManager.get(Registry.CHUNK_GENERATOR_SETTINGS_KEY);
           SimpleRegistry<DimensionOptions> dimensionOptionsRegistry =
               SkyBlockGenerationSettings.getSkyBlockDimensionOptions(
-                  dimensionTypeRegistry, biomeRegistry, settingsRegistry, seed);
+                  dimensionTypeRegistry, noiseRegistry, biomeRegistry, settingsRegistry, seed);
           return new GeneratorOptions(
               seed, generateStructures, bonusChest, dimensionOptionsRegistry);
         }

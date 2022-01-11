@@ -13,11 +13,12 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.StructureWorldAccess;
-import net.minecraft.world.gen.ChunkRandom;
 import net.minecraft.world.gen.feature.DefaultFeatureConfig;
 import net.minecraft.world.gen.feature.EndIslandFeature;
 import net.minecraft.world.gen.feature.Feature;
 import net.minecraft.world.gen.feature.util.FeatureContext;
+import net.minecraft.world.gen.random.AtomicSimpleRandom;
+import net.minecraft.world.gen.random.ChunkRandom;
 
 import com.jsorrell.skyblock.SkyBlockSettings;
 
@@ -42,7 +43,7 @@ public abstract class EndIslandFeatureMixin extends Feature<DefaultFeatureConfig
       int level) {
     if (SkyBlockSettings.gatewaysSpawnChorus) {
       if (level == 0) {
-        ChunkRandom randomChorus = new ChunkRandom();
+        ChunkRandom randomChorus = new ChunkRandom(new AtomicSimpleRandom(world.getSeed()));
         ChunkPos chunkPos = new ChunkPos(blockPos);
         randomChorus.setPopulationSeed(world.getSeed(), chunkPos.getStartX(), chunkPos.getStartZ());
         int islandRadius = MathHelper.ceil(islandSizeF);
@@ -52,7 +53,7 @@ public abstract class EndIslandFeatureMixin extends Feature<DefaultFeatureConfig
         int zOffset = randomChorus.nextInt(2 * farthestZ) - farthestZ;
         BlockPos chorusPos = blockPos.add(xOffset, 1, zOffset);
         Feature.CHORUS_PLANT.generate(
-            new FeatureContext<>(world, null, randomChorus, chorusPos, null));
+            new FeatureContext(null, world, null, randomChorus, chorusPos, null));
       }
     }
   }

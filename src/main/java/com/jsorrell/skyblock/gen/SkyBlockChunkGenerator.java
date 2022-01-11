@@ -22,6 +22,7 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.structure.StructurePiece;
 import net.minecraft.structure.StructurePieceType;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.dynamic.RegistryLookupCodec;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -29,29 +30,38 @@ import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Direction.Axis;
 import net.minecraft.util.math.Vec3i;
+import net.minecraft.util.math.noise.DoublePerlinNoiseSampler;
+import net.minecraft.util.registry.BuiltinRegistries;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.world.ChunkRegion;
 import net.minecraft.world.ServerWorldAccess;
+import net.minecraft.world.StructureWorldAccess;
 import net.minecraft.world.WorldAccess;
 import net.minecraft.world.biome.source.BiomeAccess;
 import net.minecraft.world.biome.source.BiomeSource;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.WorldChunk;
-import net.minecraft.world.gen.ChunkRandom;
 import net.minecraft.world.gen.GenerationStep;
 import net.minecraft.world.gen.StructureAccessor;
+import net.minecraft.world.gen.chunk.Blender;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import net.minecraft.world.gen.chunk.ChunkGeneratorSettings;
 import net.minecraft.world.gen.chunk.NoiseChunkGenerator;
+import net.minecraft.world.gen.random.AtomicSimpleRandom;
+import net.minecraft.world.gen.random.ChunkRandom;
 
 public class SkyBlockChunkGenerator extends NoiseChunkGenerator {
   private final long seed;
+  private final Registry<DoublePerlinNoiseSampler.NoiseParameters> noiseRegistry;
 
   public static final Codec<SkyBlockChunkGenerator> CODEC =
       RecordCodecBuilder.create(
           (instance) ->
               instance
                   .group(
+                      RegistryLookupCodec
+                          .of(Registry.NOISE_WORLDGEN)
+                          .forGetter(SkyBlockChunkGenerator::getNoiseRegistry),
                       BiomeSource.CODEC
                           .fieldOf("biome_source")
                           .forGetter(SkyBlockChunkGenerator::getBiomeSource),
@@ -65,9 +75,14 @@ public class SkyBlockChunkGenerator extends NoiseChunkGenerator {
                   .apply(instance, instance.stable(SkyBlockChunkGenerator::new)));
 
   public SkyBlockChunkGenerator(
-      BiomeSource biomeSource, long seed, Supplier<ChunkGeneratorSettings> settings) {
-    super(biomeSource, seed, settings);
+      Registry<DoublePerlinNoiseSampler.NoiseParameters> noiseRegistry, BiomeSource biomeSource, long seed, Supplier<ChunkGeneratorSettings> settings) {
+    super(noiseRegistry, biomeSource, seed, settings);
+    this.noiseRegistry = noiseRegistry;
     this.seed = seed;
+  }
+
+  public Registry<DoublePerlinNoiseSampler.NoiseParameters> getNoiseRegistry() {
+    return this.noiseRegistry;
   }
 
   public long getSeed() {
@@ -86,13 +101,11 @@ public class SkyBlockChunkGenerator extends NoiseChunkGenerator {
   @Override
   @Environment(EnvType.CLIENT)
   public ChunkGenerator withSeed(long seed) {
-    return new SkyBlockChunkGenerator(this.biomeSource.withSeed(seed), seed, this.settings);
+    return new SkyBlockChunkGenerator(this.noiseRegistry, this.biomeSource.withSeed(seed), seed, this.settings);
   }
 
   @Override
-  public void buildSurface(ChunkRegion region, Chunk chunk) {
-    Arrays.fill(chunk.getSectionArray(), WorldChunk.EMPTY_SECTION);
-
+  public void buildSurface(ChunkRegion region, StructureAccessor accessor, Chunk chunk) {
     if (region.getDimension().isNatural()) {
       BlockPos spawn =
           new BlockPos(
@@ -120,23 +133,23 @@ public class SkyBlockChunkGenerator extends NoiseChunkGenerator {
   // TODO: Does this hurt something
   @Override
   public CompletableFuture<Chunk> populateNoise(
-      Executor executor, StructureAccessor accessor, Chunk chunk) {
+      Executor executor, Blender blender, StructureAccessor accessor, Chunk chunk) {
     return CompletableFuture.completedFuture(chunk);
   }
 
   @Override
-  public void carve(long seed, BiomeAccess access, Chunk chunk, GenerationStep.Carver carver) {}
+  public void carve(ChunkRegion chunkRegion, long seed, BiomeAccess access, StructureAccessor accessor, Chunk chunk, GenerationStep.Carver carver) {}
 
   @Override
-  public void generateFeatures(ChunkRegion region, StructureAccessor accessor) {
-    ChunkPos chunkPos = region.getCenterPos();
-    BlockPos pos = new BlockPos(chunkPos.getStartX(), region.getBottomY(), chunkPos.getStartZ());
+  public void generateFeatures(StructureWorldAccess world, Chunk chunk, StructureAccessor accessor) {
+    ChunkPos chunkPos = chunk.getPos();
+    BlockPos pos = new BlockPos(chunkPos.getStartX(), chunk.getBottomY(), chunkPos.getStartZ());
     int startX = chunkPos.getStartX();
     int startZ = chunkPos.getStartZ();
-    BlockBox box = new BlockBox(startX, 0, startZ, startX + 15, region.getHeight(), startZ + 15);
+    BlockBox box = new BlockBox(startX, 0, startZ, startX + 15, chunk.getHeight(), startZ + 15);
 
     accessor
-        .getStructuresWithChildren(
+        .getStructureStarts(
             ChunkSectionPos.from(pos),
             Registry.STRUCTURE_FEATURE.get(new Identifier("minecraft:stronghold")))
         .forEach(
@@ -149,10 +162,10 @@ public class SkyBlockChunkGenerator extends NoiseChunkGenerator {
                           piece.getBoundingBox().getMinY(),
                           piece.getBoundingBox().getMinZ());
                   if (piece.intersectsChunk(chunkPos, 0)) {
-                    ChunkRandom random = new ChunkRandom();
+                    ChunkRandom random = new ChunkRandom(new AtomicSimpleRandom(seed));
                     random.setCarverSeed(seed, chunkPos.x, chunkPos.z);
                     generateStrongholdPortalInBox(
-                        region, portalPos, random, Objects.requireNonNull(piece.getFacing()), box);
+                        world, portalPos, random, Objects.requireNonNull(piece.getFacing()), box);
                   }
                 }
               }

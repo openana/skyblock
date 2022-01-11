@@ -20,18 +20,8 @@ import net.minecraft.world.WorldAccess;
 import net.minecraft.world.biome.Biome;
 
 public class UsefulComposter {
-  protected static final List<Block> possibleSurfaceDrops =
-      new ArrayList<>(Arrays.asList(Blocks.SAND, Blocks.RED_SAND, Blocks.DIRT));
-
   public static Item getComposterProduct(Biome biome) {
     Block dropBlock = Blocks.DIRT;
-
-    Block surfaceBlock =
-        biome.getGenerationSettings().getSurfaceConfig().getTopMaterial().getBlock();
-    if (possibleSurfaceDrops.contains(surfaceBlock)) {
-      dropBlock = surfaceBlock;
-    }
-
     return dropBlock.asItem();
   }
 

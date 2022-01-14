@@ -13,7 +13,7 @@
     "frame": "goal"
   },
   "criteria": {
-    "below_y_10": {
+    "below_y__56": {
       "trigger": "minecraft:tick",
       "conditions": {
         "player": [
@@ -22,7 +22,7 @@
             "predicate": {
               "position": {
                 "y": {
-                  "max": 10
+                  "max": -56
                 }
               }
             },

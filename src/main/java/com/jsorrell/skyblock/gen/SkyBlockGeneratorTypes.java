@@ -12,13 +12,13 @@ public class SkyBlockGeneratorTypes {
   public static final GeneratorType SKYBLOCK =
       new GeneratorType("skyblock") {
         @Override
-        protected ChunkGenerator getChunkGenerator(DynamicRegistryManager drm, long seed) {
-          return SkyBlockGenerationSettings.createOverworldGenerator(drm, seed);
+        protected ChunkGenerator getChunkGenerator(DynamicRegistryManager registryManager, long seed) {
+          return SkyBlockGenerationSettings.createOverworldGenerator(registryManager, seed);
         }
 
         @Override
         public GeneratorOptions createDefaultOptions(
-            DynamicRegistryManager.Impl drm,
+            DynamicRegistryManager registryManager,
             long seed,
             boolean generateStructures,
             boolean bonusChest) {
@@ -26,7 +26,7 @@ public class SkyBlockGeneratorTypes {
               seed,
               generateStructures,
               bonusChest,
-              SkyBlockGenerationSettings.getSkyBlockDimensionOptionsRegistry(drm, seed));
+              SkyBlockGenerationSettings.getSkyBlockDimensionOptionsRegistry(registryManager, seed));
         }
       };
 }
